@@ -15,7 +15,7 @@ pxcDir = fullfile('data_for_moodle','data_for_moodle','labelsWithTwo')
 % for i = 1:length(labelImages)
 %     [labelImage,map] = imread(fullfile(pxDir, labelImages(i).name));
 %     labelImage(labelImage ~= 1) = 3 % change the pixel do not equil 1 to 3 (include:0,2,3,4)
-%     imwrite(labelImage,map,fullfile(pxcDir,labelImages(i).name)); % save the changed images to labelsWithTwo好了
+%     imwrite(labelImage,map,fullfile(pxcDir,labelImages(i).name)); % save the changed images to labelsWithTwo
 % end
 % Note: map is a color mapping table (if the image is an indexed color image). 
 % If the image is a standard RGB or grayscale image, the map will be empty.
@@ -100,17 +100,95 @@ layers = [
 opts = trainingOptions("sgdm", ...
     'InitialLearnRate',1e-3,...
     'MaxEpochs',10,...
-    'MiniBatchSize',32)
+    'MiniBatchSize',64, ...
+    'Plots', 'training-progress');
 
 % step04-Train the net
 net = trainNetwork(trainingData, layers, opts)
 
+% save the net
+save('Existnet.mat', 'net')
+
+% % step05-Test the net 
+% scores = minibatchqueue(net,imdsValidation); % The probability corresponding to each label
+% YValidation = scores2label(scores,classNames); % The label with the highest matching probability
+% 
+% TValidation = imdsValidation.Labels;
+% accurcy = mean(YValidation == TValidation)
+
 % step05-Test the net 
-scores = minibatchpredict(net,imdsValidation); % The probability corresponding to each label
-YValidation = scores2label(scores,classNames); % The label with the highest matching probability
- 
-TValidation = imdsValidation.Labels;
-accurcy = mean(YValidation == TValidation)
+% classname = categorical(imdsValidation)
+% scores = minibatchqueue(net,imdsValidation); % The probability corresponding to each label
+% YValidation = scores2label(scores,classNames); % The label with the highest matching probability
+% 
+% TValidation = imdsValidation.Labels;
+% accurcy = mean(YValidation == TValidation)
+
+% predictedLabels = semanticseg(imdsValidation,net);
+% predictedLabels = categorical(predictedLabels);
+% expectedLables = pxdsValidation.readall();
+% 
+% if iscell(expectedLables)
+%     expectedLables = cat(3, expectedLables{:});
+% end
+% 
+% if -iscategorical(expectedLables)
+%     expectedLables = categorical(expectedLables);
+% end
+% 
+% accuracy = mean(predictedLabels == expectedLables, 'all')
+
+% Evaluation semantic segmentation
+pxdsResults = semanticseg(imds,net,"WriteLocation","out"); 
+metrics = evaluateSemanticSegmentation(pxdsResults,pxds, 'Verbose',true);
+disp(size(metrics.ConfusionMatrix))
+disp(metrics.ConfusionMatrix)
+disp(classNames)
+
+% Display confusion matrix
+figure;
+confusionchart(metrics.ConfusionMatrix.Variables,classNames,"Normalization","row-normalized");
+title('Normalized Confusion Matrix (%)');
+
+% Output the average IoU
+meanIoU = metrics.DataSetMetrics.MeanIoU;
+fprintf('Mean Intersection over Union (IoU): %0.2f%%\n', meanIoU*100);
+
+% Displays the histogram of the IoU values
+figure;
+histogram(metrics.ClassMetrics.IoU);
+title('Histogram of IoU Values');
+xlabel('IoU');
+ylabel('Frequency');
+
+% Randomly select two images for display
+numDisplay = 2;
+randIndices = randperm(numel(imdsValidation.Files), numDisplay);
+
+% Load the original images and their segmentation results
+for i = 1:numDisplay
+    % Read the original image
+    originalImg = imread(imdsValidation.Files{randIndices(i)});
+    
+    % Read the segmentation result
+    [C,score] = semanticseg(imread(imdsValidation.Files{randIndices(i)}), net);
+
+    % Convert segmentation result to RGB format for display
+    % Create a color map - assuming there are two classes
+    labelColorMap = [1 0 0; 0 0 0]; % Red and black represent the two classes
+    segmentedImg = label2rgb(C, labelColorMap);
+
+    % Display images
+    figure;
+    subplot(1,2,1);
+    imshow(originalImg);
+    title('Original Image');
+
+    subplot(1,2,2);
+    imshow(segmentedImg);
+    title('Segmented Image');
+end
+
 
 
 
