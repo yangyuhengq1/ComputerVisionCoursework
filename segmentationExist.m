@@ -4,10 +4,10 @@ clear
 % Step01-Data loading and pre-processing
 
 % Set images and labels path
-imDir = fullfile('data_for_moodle','data_for_moodle','images_256')
-pxDir = fullfile('data_for_moodle','data_for_moodle','labels_256')
+imDir = fullfile('data_for_moodle','images_256')
+pxDir = fullfile('data_for_moodle','labels_256')
 % labelsWithTwo: Stores a new folder that turns 5 labels into 2 labels
-pxcDir = fullfile('data_for_moodle','data_for_moodle','labelsWithTwo')
+pxcDir = fullfile('data_for_moodle','labelsWithTwo')
 
 % step01-01 convert 5 labels images into 2 labels images
 % labelImages = dir(fullfile(pxDir,'*.png')) % 'dir' get the information about label images
@@ -99,7 +99,7 @@ layers = [
  
 opts = trainingOptions("sgdm", ...
     'InitialLearnRate',1e-3,...
-    'MaxEpochs',10,...
+    'MaxEpochs',3,...
     'MiniBatchSize',64, ...
     'Plots', 'training-progress');
 
