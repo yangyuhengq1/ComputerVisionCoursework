@@ -4,10 +4,10 @@ clear
 % Step01-Data loading and pre-processing
 
 % Set images and labels path
-imDir = fullfile('data_for_moodle','images_256')
-pxDir = fullfile('data_for_moodle','labels_256')
+imDir = fullfile('data_for_moodle','data_for_moodle','images_256')
+pxDir = fullfile('data_for_moodle','data_for_moodle','labels_256')
 % labelsWithTwo: Stores a new folder that turns 5 labels into 2 labels
-pxcDir = fullfile('data_for_moodle','labelsWithTwo')
+pxcDir = fullfile('data_for_moodle','data_for_moodle','labelsWithTwo')
 
 % step01-01 convert 5 labels images into 2 labels images
 % labelImages = dir(fullfile(pxDir,'*.png')) % 'dir' get the information about label images
@@ -68,46 +68,25 @@ pxdsValidation = subset(pxds, valIndices);
 trainingData = combine(imdsTrain, pxdsTrain);
 validationData = combine(imdsValidation, pxdsValidation);
  
-%  calculate the weight
+% step03-Prepare the details of parameters
 
-tb1 = countEachLabel(pxds)
+inputSize = [256 256 3];
+numClasses = 2;
+laygraph = unetLayers(inputSize, numClasses, 'EncoderDepth', 4);
 
-totalNumberOfPixels = sum(tb1.PixelCount); % Calculate the total number of pixels for all classes
-frequency = tb1.PixelCount / totalNumberOfPixels; % Calculate the frequency of each category of pixels
-classWeights = 1./frequency  % calculate the weight, 1.means 1
-
-% step03-Build the U-net
-numFilters = 64;
-filterSize = 3;
- 
-layers = [
-    % downsampling layers
-    imageInputLayer([256 256 3])
-    convolution2dLayer(filterSize,numFilters,'Padding',1)
-    reluLayer()
-    maxPooling2dLayer(2,'Stride',2)
-    convolution2dLayer(filterSize,numFilters,'Padding',1)
-    reluLayer()
- 
-    % upsampling layers
-    transposedConv2dLayer(4,numFilters,"Stride",2,"Cropping",1);
-    convolution2dLayer(1,numClasses);
-    softmaxLayer()
-    pixelClassificationLayer('Classes',tb1.Name,'ClassWeights',classWeights);
-    ]
- 
- 
 opts = trainingOptions("sgdm", ...
     'InitialLearnRate',1e-3,...
-    'MaxEpochs',3,...
+    'MaxEpochs',10,...
     'MiniBatchSize',64, ...
-    'Plots', 'training-progress');
+    'Plots', 'training-progress', ...
+    'ValidationData', validationData, ...
+    'ValidationFrequency', 5);
 
-% step04-Train the net
-net = trainNetwork(trainingData, layers, opts)
+% step04-Train the U-Net
+net = trainNetwork(trainingData, laygraph, opts)
 
 % save the net
-save('Existnet.mat', 'net')
+save('segmentexistnet', 'net')
 
 % % step05-Test the net 
 % scores = minibatchqueue(net,imdsValidation); % The probability corresponding to each label
